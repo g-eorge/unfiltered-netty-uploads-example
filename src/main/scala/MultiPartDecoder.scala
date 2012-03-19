@@ -9,57 +9,69 @@ object MultiPartDecoder {
   def main(a: Array[String]) {
 
     Http(8080).handler(cycle.MultiPartDecoder{
-      case POST(Path("/cycle/disk")) & MultiPart(req) =>
-        val disk = MultiPartParams.Disk(req)
-        (disk.files("f"), disk.params("p")) match {
-          case (Seq(f, _*), p) =>
-            ResponseString(
-              "cycle disk read file f named %s with content type %s and param p %s" format(
+      case POST(Path("/cycle/disk")) & MultiPart(req) => {
+        case Decode(binding) =>
+          val disk = MultiPartParams.Disk(binding)
+          (disk.files("f"), disk.params("p")) match {
+            case (Seq(f, _*), p) =>
+              ResponseString(
+                "cycle disk read file f named %s with content type %s and param p %s" format(
+                  f.name, f.contentType, p))
+              case _ =>  ResponseString("what's f?")
+            }
+      }
+      case POST(Path("/cycle/stream") & MultiPart(req)) => {
+        case Decode(binding) =>
+          val stream = MultiPartParams.Streamed(binding)
+          (stream.files("f"), stream.params("p")) match {
+            case (Seq(f, _*), p) => ResponseString(
+              "cycle stream read file f is named %s with content type %s and param p %s" format(
                 f.name, f.contentType, p))
             case _ =>  ResponseString("what's f?")
           }
-      case POST(Path("/cycle/stream") & MultiPart(req)) =>
-        val stream = MultiPartParams.Streamed(req)
-        (stream.files("f"), stream.params("p")) match {
-          case (Seq(f, _*), p) => ResponseString(
-            "cycle stream read file f is named %s with content type %s and param p %s" format(
-              f.name, f.contentType, p))
-          case _ =>  ResponseString("what's f?")
-        }
-      case r@POST(Path("/cycle/mem") & MultiPart(req)) =>
-        val mem =  MultiPartParams.Memory(req)
-        (mem.files("f"), mem.params("p")) match {
-          case (Seq(f, _*), p) => ResponseString(
-            "cycle memory read file f is named %s with content type %s and param p %s" format(
-              f.name, f.contentType, p))
-          case _ =>  ResponseString("what's f?")
-        }
-    }).handler(async.MultiPartDecoder{
-      case r @ POST(Path("/async/disk")) & MultiPart(req) =>
-        val disk = MultiPartParams.Disk(req)
-        (disk.files("f"), disk.params("p")) match {
-          case (Seq(f, _*), p) =>
-            r.respond(ResponseString(
-              "async disk read file f named %s with content type %s and param p %s" format(
-                f.name, f.contentType, p)))
-            case _ =>  r.respond(ResponseString("what's f?"))
+      }
+      case r@POST(Path("/cycle/mem") & MultiPart(req)) => {
+        case Decode(binding) =>
+          val mem =  MultiPartParams.Memory(binding)
+          (mem.files("f"), mem.params("p")) match {
+            case (Seq(f, _*), p) => ResponseString(
+              "cycle memory read file f is named %s with content type %s and param p %s" format(
+                f.name, f.contentType, p))
+            case _ =>  ResponseString("what's f?")
           }
-      case r @ POST(Path("/async/stream") & MultiPart(req)) =>
-        val stream = MultiPartParams.Streamed(req)
-        (stream.files("f"), stream.params("p")) match {
-          case (Seq(f, _*), p) => r.respond(ResponseString(
-            "async stream read file f is named %s with content type %s and param p %s" format(
-              f.name, f.contentType, p)))
-          case _ =>  r.respond(ResponseString("what's f?"))
-        }
-      case r @ POST(Path("/async/mem") & MultiPart(req)) =>
-        val mem = MultiPartParams.Memory(req)
-        (mem.files("f"), mem.params("p")) match {
-          case (Seq(f, _*), p) => r.respond(ResponseString(
-            "async memory read file f is named %s with content type %s and param p %s" format(
-              f.name, f.contentType, p)))
-          case _ => r.respond(ResponseString("what's f?"))
-        }
+      }
+    }).handler(async.MultiPartDecoder{
+      case r @ POST(Path("/async/disk")) & MultiPart(req) => {
+        case Decode(binding) =>
+          val disk = MultiPartParams.Disk(binding)
+          (disk.files("f"), disk.params("p")) match {
+            case (Seq(f, _*), p) =>
+              binding.respond(ResponseString(
+                "async disk read file f named %s with content type %s and param p %s" format(
+                  f.name, f.contentType, p)))
+              case _ =>  binding.respond(ResponseString("what's f?"))
+            }
+      }
+      case r @ POST(Path("/async/stream") & MultiPart(req)) => {
+        case Decode(binding) =>
+          val stream = MultiPartParams.Streamed(binding)
+          (stream.files("f"), stream.params("p")) match {
+            case (Seq(f, _*), p) => binding.respond(ResponseString(
+              "async stream read file f is named %s with content type %s and param p %s" format(
+                f.name, f.contentType, p)))
+            case _ =>  binding.respond(ResponseString("what's f?"))
+          }
+      }
+      case r @ POST(Path("/async/mem") & MultiPart(req)) => {
+        case Decode(binding) =>
+          val mem = MultiPartParams.Memory(binding)
+          (mem.files("f"), mem.params("p")) match {
+            case (Seq(f, _*), p) => binding.respond(ResponseString(
+              "async memory read file f is named %s with content type %s and param p %s" format(
+                f.name, f.contentType, p)))
+            case _ => binding.respond(ResponseString("what's f?"))
+          }
+      }
     }).handler(cycle.Planify{
       case Path("/") => Html(
         <html>
